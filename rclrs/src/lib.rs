@@ -9,6 +9,7 @@ mod arguments;
 mod client;
 mod context;
 mod error;
+mod log;
 mod node;
 mod parameter;
 mod publisher;

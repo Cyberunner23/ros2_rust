@@ -6,7 +6,7 @@ use std::vec::Vec;
 
 use crate::rcl_bindings::*;
 use crate::{RclrsError, ToResult};
-use crate::log::log_context::rclrs_initialize_logging;
+use crate::log::log_context::LogContext;
 
 impl Drop for rcl_context_t {
     fn drop(&mut self) {
@@ -103,9 +103,7 @@ impl Context {
                 rcl_context_mtx: Arc::new(Mutex::new(rcl_context)),
             };
 
-            // SAFETY: It is expected to pass an initialized rcl context.
-            rclrs_initialize_logging(&context)?;
-
+            LogContext::init(&context)?;
             Ok(context)
         }
     }

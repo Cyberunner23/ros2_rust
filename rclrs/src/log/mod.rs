@@ -1,7 +1,6 @@
 use crate::rcl_bindings::RCUTILS_LOG_SEVERITY;
 
 pub(crate) mod log_context; 
-pub(crate) mod log_utils;
 pub(crate) mod logger;
 
 pub enum LogSeverity {

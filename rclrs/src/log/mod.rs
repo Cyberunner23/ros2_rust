@@ -1,6 +1,16 @@
+use crate::rcl_bindings::RCUTILS_LOG_SEVERITY;
 
 pub(crate) mod log_context; 
 pub(crate) mod log_utils;
+pub(crate) mod logger;
+
+pub enum LogSeverity {
+    Debug = RCUTILS_LOG_SEVERITY::RCUTILS_LOG_SEVERITY_DEBUG as isize,
+    Info = RCUTILS_LOG_SEVERITY::RCUTILS_LOG_SEVERITY_INFO as isize,
+    Warn = RCUTILS_LOG_SEVERITY::RCUTILS_LOG_SEVERITY_WARN as isize,
+    Error = RCUTILS_LOG_SEVERITY::RCUTILS_LOG_SEVERITY_ERROR as isize,
+    Fatal = RCUTILS_LOG_SEVERITY::RCUTILS_LOG_SEVERITY_FATAL as isize
+}
 
 // Hack to get the name of a function as rust has no built in method to do so.
 macro_rules! function {

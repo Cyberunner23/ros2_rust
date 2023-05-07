@@ -7,7 +7,7 @@ use crate::{RclrsError, ToResult};
 use crate::context::Context;
 
 lazy_static! {
-    // rcl itself hold a NON-THREAD-SAFE global logging context.
+    // rcl itself holds a NON-THREAD-SAFE global logging context.
     // Therefore, it is our job to ensure thread safety when calling rcl logging functions.
     // Concretely, we must ensure thread safety when:
     //     * Initializing rcl logging.
@@ -15,10 +15,10 @@ lazy_static! {
     //     * Sending logs the output handlers (calls to rcl_logging_multiple_output_handler).
     // It is also our job to ensure rcl logging cannot be initialized if it is already initialized.
     // Option signifies whether logging is initialized or not.
-    static ref GLOBAL_LOG_CONTEXT: Arc<Mutex<Option<LogContext>>> = Arc::new(Mutex::new(None));
+    pub(crate) static ref GLOBAL_LOG_CONTEXT: Arc<Mutex<Option<LogContext>>> = Arc::new(Mutex::new(None));
 }
 
-// Exisis only to uninitialize the logging system on exit.
+// Exists only to uninitialize the logging system on exit.
 pub(crate) struct LogContext;
 
 impl Drop for LogContext {
@@ -97,13 +97,15 @@ unsafe extern "C" fn rclrc_logging_output_handler(
 
     // THREAD SAFETY: Satisfies requirement to lock on output handling.
     let global_context = GLOBAL_LOG_CONTEXT.clone();
-    let _unused = global_context.lock().unwrap();
+    let global_context_guard = global_context.lock().unwrap();
+
+    if global_context_guard.is_none() {
+        // Logging not initialized.
+        return;
+    }
 
     // SAFETY: This call is safe if the call to rcutils_log is safe.
     //         We simply forward the parameters and apply a mutex.
     //         TODO?: Find a way to verify instead of assuming here.
     rcl_logging_multiple_output_handler(location, severity, name, timestamp, format, args);
 }
-
-// NOTE(Cyberunner23): Logging macro implementation will use this
-// rcutils_log

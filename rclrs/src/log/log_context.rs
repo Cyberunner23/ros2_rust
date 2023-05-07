@@ -43,53 +43,47 @@ impl Drop for LogContext {
     }
 }
 
-impl LogContext {
-    pub(crate) fn new() -> Self {
-        Self {}
+pub(crate) fn rclrs_initialize_logging(rcl_context: &Context) -> Result<(), RclrsError> {
+
+    // THREAD SAFETY:
+    //   Satisfies requirement to lock on initialize.
+    //   There exists a dependency on rcl context,
+    //   however rcl context does not depend on our (rclrs) logging mutex.
+    //   Therefore, deadlocks are not possible.
+    let global_context = GLOBAL_LOG_CONTEXT.clone();
+    let mut global_context_guard = global_context.lock().unwrap();
+
+    if global_context_guard.is_some() {
+        // Context already created.
+        return Ok(());
     }
 
-    pub(crate) fn init(rcl_context: &Context) -> Result<(), RclrsError> {
-
+    {
         // THREAD SAFETY:
-        //   Satisfies requirement to lock on initialize.
-        //   There exists a dependency on rcl context,
+        //   This is our dependency on rcl context,
         //   however rcl context does not depend on our (rclrs) logging mutex.
         //   Therefore, deadlocks are not possible.
-        let global_context = GLOBAL_LOG_CONTEXT.clone();
-        let mut global_context_guard = global_context.lock().unwrap();
+        let rcl_context_mtx = rcl_context.rcl_context_mtx.clone();
+        let rcl_context_mtx_guard = rcl_context_mtx.lock().unwrap();
 
-        if global_context_guard.is_some() {
-            // Context already created.
-            return Ok(());
+        unsafe {
+            // SAFETY: No preconditions for this function.
+            let allocator = rcutils_get_default_allocator();
+
+            // SAFETY:
+            //   It is expected to pass the global_arguments of a non-zero initialized rcl context.
+            //   It is expected to pass a non-zero initialized allocator.
+            //   It is expected to pass a callback for output handling.
+            rcl_logging_configure_with_output_handler(
+                &rcl_context_mtx_guard.global_arguments,
+                &allocator,
+                Some(rclrc_logging_output_handler)
+            ).ok()?;
         }
-        
-        {
-            // THREAD SAFETY:
-            //   This is our dependency on rcl context,
-            //   however rcl context does not depend on our (rclrs) logging mutex.
-            //   Therefore, deadlocks are not possible.
-            let rcl_context_mtx = rcl_context.rcl_context_mtx.clone();
-            let rcl_context_mtx_guard = rcl_context_mtx.lock().unwrap();
-
-            unsafe {
-                // SAFETY: No preconditions for this function.
-                let allocator = rcutils_get_default_allocator();
-
-                // SAFETY:
-                //   It is expected to pass the global_arguments of a non-zero initialized rcl context.
-                //   It is expected to pass a non-zero initialized allocator.
-                //   It is expected to pass a callback for output handling.
-                rcl_logging_configure_with_output_handler(
-                    &rcl_context_mtx_guard.global_arguments,
-                    &allocator,
-                    Some(rclrc_logging_output_handler)
-                ).ok()?;
-            }
-        }
-
-        *global_context_guard = Some(Self::new());
-        Ok(())
     }
+
+    *global_context_guard = Some(LogContext {});
+    Ok(())
 }
 
 #[allow(dead_code)]
@@ -113,5 +107,3 @@ unsafe extern "C" fn rclrc_logging_output_handler(
 
 // NOTE(Cyberunner23): Logging macro implementation will use this
 // rcutils_log
-
-

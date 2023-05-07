@@ -98,10 +98,16 @@ impl Context {
             rcl_init_options_fini(&mut rcl_init_options).ok()?;
             // Move the check after the last fini()
             ret?;
+
+            let context = Self {
+                rcl_context_mtx: Arc::new(Mutex::new(rcl_context)),
+            };
+
+            // SAFETY: It is expected to pass an initialized rcl context.
+            rclrs_initialize_logging(&context)?;
+
+            Ok(context)
         }
-        Ok(Self {
-            rcl_context_mtx: Arc::new(Mutex::new(rcl_context)),
-        })
     }
 
     /// Checks if the context is still valid.
